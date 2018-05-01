@@ -21,6 +21,7 @@ from pymaker import Address, Wad
 from pymaker.approval import directly
 from pymaker.auctions import Flipper, Flapper, Flopper
 from pymaker.token import DSToken
+from tests.helpers import time_travel_by
 
 
 class TestFlipper:
@@ -68,12 +69,27 @@ class TestFlapper:
         assert self.pie.balance_of(self.our_address) == Wad.from_number(49980000)
         assert self.gem.balance_of(pit) == Wad.from_number(0)
 
-        # when
         self.flapper.approve(directly())
+
+        # when
         self.flapper.tend(1, Wad.from_number(20000), Wad.from_number(1.5)).transact()
         # then
         assert self.pie.balance_of(self.our_address) == Wad.from_number(49980000)
         assert self.gem.balance_of(pit) == Wad.from_number(0.5)
+
+        # when
+        self.flapper.tend(1, Wad.from_number(20000), Wad.from_number(2.0)).transact()
+        # then
+        assert self.pie.balance_of(self.our_address) == Wad.from_number(49980000)
+        assert self.gem.balance_of(pit) == Wad.from_number(1.0)
+
+        time_travel_by(self.web3, 60*60*24*8)
+
+        # when
+        self.flapper.deal(1).transact()
+        # then
+        assert self.pie.balance_of(self.our_address) == Wad.from_number(50000000)
+        assert self.gem.balance_of(pit) == Wad.from_number(1.0)
 
 
 class TestFlopper:
