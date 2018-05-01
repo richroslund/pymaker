@@ -18,6 +18,61 @@
 from web3 import Web3
 
 from pymaker import Contract, Address, Transact
+from pymaker.util import int_to_bytes32
+
+
+class Flipper(Contract):
+    """A client for the `Flipper` contract, TODO.
+
+    You can find the source code of the `Flipper` contract here:
+    <TODO>.
+
+    Attributes:
+        web3: An instance of `Web` from `web3.py`.
+        address: Ethereum address of the `Flipper` contract.
+    """
+
+    abi = Contract._load_abi(__name__, 'abi/Flipper.abi')
+    bin = Contract._load_bin(__name__, 'abi/Flipper.bin')
+
+    @staticmethod
+    def deploy(web3: Web3, bin: Address, ilk: int, pie: Address, gem: Address):
+        assert(isinstance(bin, Address))
+        assert(isinstance(ilk, int))
+        assert(isinstance(pie, Address))
+        assert(isinstance(gem, Address))
+
+        return Flipper(web3=web3, address=Contract._deploy(web3, Flipper.abi, Flipper.bin, [bin.address,
+                                                                                            int_to_bytes32(ilk),
+                                                                                            pie.address,
+                                                                                            gem.address]))
+
+    def __init__(self, web3: Web3, address: Address):
+        assert(isinstance(web3, Web3))
+        assert(isinstance(address, Address))
+
+        self.web3 = web3
+        self.address = address
+        self._contract = self._get_contract(web3, self.abi, address)
+
+    def pie(self) -> Address:
+        """Returns the `pie` token.
+
+        Returns:
+            The address of the `pie` token.
+        """
+        return Address(self._contract.call().pie())
+
+    def gem(self) -> Address:
+        """Returns the `gem` token.
+
+        Returns:
+            The address of the `gem` token.
+        """
+        return Address(self._contract.call().gem())
+
+    def __repr__(self):
+        return f"Flipper('{self.address}')"
 
 
 class Flapper(Contract):
