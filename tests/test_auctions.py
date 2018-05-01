@@ -18,7 +18,7 @@
 from web3 import Web3, EthereumTesterProvider
 
 from pymaker import Address
-from pymaker.auctions import Flapper
+from pymaker.auctions import Flapper, Flopper
 from pymaker.token import DSToken
 
 
@@ -36,3 +36,19 @@ class TestFlapper:
 
     def test_gem(self):
         assert self.flapper.gem() == self.gem.address
+
+
+class TestFlopper:
+    def setup_method(self):
+        self.web3 = Web3(EthereumTesterProvider())
+        self.web3.eth.defaultAccount = self.web3.eth.accounts[0]
+        self.our_address = Address(self.web3.eth.defaultAccount)
+        self.pie = DSToken.deploy(self.web3, 'DAI')
+        self.gem = DSToken.deploy(self.web3, 'MKR')
+        self.flopper = Flopper.deploy(self.web3, self.pie.address, self.gem.address)
+
+    def test_pie(self):
+        assert self.flopper.pie() == self.pie.address
+
+    def test_gem(self):
+        assert self.flopper.gem() == self.gem.address

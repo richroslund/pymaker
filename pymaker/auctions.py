@@ -67,3 +67,52 @@ class Flapper(Contract):
 
     def __repr__(self):
         return f"Flapper('{self.address}')"
+
+
+class Flopper(Contract):
+    """A client for the `Flopper` contract, TODO.
+
+    You can find the source code of the `Flopper` contract here:
+    <TODO>.
+
+    Attributes:
+        web3: An instance of `Web` from `web3.py`.
+        address: Ethereum address of the `Flopper` contract.
+    """
+
+    abi = Contract._load_abi(__name__, 'abi/Flopper.abi')
+    bin = Contract._load_bin(__name__, 'abi/Flopper.bin')
+
+    @staticmethod
+    def deploy(web3: Web3, pie: Address, gem: Address):
+        assert(isinstance(pie, Address))
+        assert(isinstance(gem, Address))
+
+        return Flapper(web3=web3, address=Contract._deploy(web3, Flopper.abi, Flopper.bin, [pie.address, gem.address]))
+
+    def __init__(self, web3: Web3, address: Address):
+        assert(isinstance(web3, Web3))
+        assert(isinstance(address, Address))
+
+        self.web3 = web3
+        self.address = address
+        self._contract = self._get_contract(web3, self.abi, address)
+
+    def pie(self) -> Address:
+        """Returns the `pie` token.
+
+        Returns:
+            The address of the `pie` token.
+        """
+        return Address(self._contract.call().pie())
+
+    def gem(self) -> Address:
+        """Returns the `gem` token.
+
+        Returns:
+            The address of the `gem` token.
+        """
+        return Address(self._contract.call().gem())
+
+    def __repr__(self):
+        return f"Flopper('{self.address}')"
