@@ -17,7 +17,8 @@
 
 from web3 import Web3
 
-from pymaker import Contract, Address, Transact
+from pymaker import Contract, Address, Transact, Wad
+from pymaker.token import ERC20Token
 from pymaker.util import int_to_bytes32
 
 
@@ -104,6 +105,19 @@ class Flapper(Contract):
         self.address = address
         self._contract = self._get_contract(web3, self.abi, address)
 
+    def approve(self, approval_function):
+        """Approve the `Flapper` to access our `gem` so we can participate in auctions.
+
+        For available approval functions (i.e. approval modes) see `directly` and `via_tx_manager`
+        in `pymaker.approval`.
+
+        Args:
+            approval_function: Approval function (i.e. approval mode).
+        """
+        assert(callable(approval_function))
+
+        approval_function(ERC20Token(web3=self.web3, address=self.gem()), self.address, 'Flapper')
+
     def pie(self) -> Address:
         """Returns the `pie` token.
 
@@ -119,6 +133,27 @@ class Flapper(Contract):
             The address of the `gem` token.
         """
         return Address(self._contract.call().gem())
+
+    def kick(self, gal: Address, lot: Wad, bid: Wad) -> Transact:
+        assert(isinstance(gal, Address))
+        assert(isinstance(lot, Wad))
+        assert(isinstance(bid, Wad))
+
+        return Transact(self, self.web3, self.abi, self.address, self._contract, 'kick', [gal.address,
+                                                                                          lot.value,
+                                                                                          bid.value])
+
+    def tend(self, id: int, lot: Wad, bid: Wad) -> Transact:
+        assert(isinstance(id, int))
+        assert(isinstance(lot, Wad))
+        assert(isinstance(bid, Wad))
+
+        return Transact(self, self.web3, self.abi, self.address, self._contract, 'tend', [id, lot.value, bid.value])
+
+    def deal(self, id: int) -> Transact:
+        assert(isinstance(id, int))
+
+        return Transact(self, self.web3, self.abi, self.address, self._contract, 'deal', [id])
 
     def __repr__(self):
         return f"Flapper('{self.address}')"

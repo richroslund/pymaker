@@ -17,7 +17,8 @@
 
 from web3 import Web3, EthereumTesterProvider
 
-from pymaker import Address
+from pymaker import Address, Wad
+from pymaker.approval import directly
 from pymaker.auctions import Flipper, Flapper, Flopper
 from pymaker.token import DSToken
 
@@ -52,6 +53,27 @@ class TestFlapper:
 
     def test_gem(self):
         assert self.flapper.gem() == self.gem.address
+
+    def test_scenario(self):
+        # given
+        pit = Address(self.web3.eth.accounts[1])
+        # and
+        self.pie.mint(Wad.from_number(50000000)).transact()
+        self.gem.mint(Wad.from_number(1000)).transact()
+
+        # when
+        self.pie.approve(self.flapper.address).transact()
+        self.flapper.kick(pit, Wad.from_number(20000), Wad.from_number(1)).transact()
+        # then
+        assert self.pie.balance_of(self.our_address) == Wad.from_number(49980000)
+        assert self.gem.balance_of(pit) == Wad.from_number(0)
+
+        # when
+        self.flapper.approve(directly())
+        self.flapper.tend(1, Wad.from_number(20000), Wad.from_number(1.5)).transact()
+        # then
+        assert self.pie.balance_of(self.our_address) == Wad.from_number(49980000)
+        assert self.gem.balance_of(pit) == Wad.from_number(0.5)
 
 
 class TestFlopper:
