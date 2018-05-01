@@ -88,7 +88,7 @@ class Flopper(Contract):
         assert(isinstance(pie, Address))
         assert(isinstance(gem, Address))
 
-        return Flapper(web3=web3, address=Contract._deploy(web3, Flopper.abi, Flopper.bin, [pie.address, gem.address]))
+        return Flopper(web3=web3, address=Contract._deploy(web3, Flopper.abi, Flopper.bin, [pie.address, gem.address]))
 
     def __init__(self, web3: Web3, address: Address):
         assert(isinstance(web3, Web3))
