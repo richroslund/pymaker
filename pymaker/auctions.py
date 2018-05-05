@@ -204,5 +204,26 @@ class Flopper(Contract):
         """
         return Address(self._contract.call().gem())
 
+    def kick(self, gal: Address, lot: Wad, bid: Wad) -> Transact:
+        assert(isinstance(gal, Address))
+        assert(isinstance(lot, Wad))
+        assert(isinstance(bid, Wad))
+
+        return Transact(self, self.web3, self.abi, self.address, self._contract, 'kick', [gal.address,
+                                                                                          lot.value,
+                                                                                          bid.value])
+
+    def dent(self, id: int, lot: Wad, bid: Wad) -> Transact:
+        assert(isinstance(id, int))
+        assert(isinstance(lot, Wad))
+        assert(isinstance(bid, Wad))
+
+        return Transact(self, self.web3, self.abi, self.address, self._contract, 'dent', [id, lot.value, bid.value])
+
+    def deal(self, id: int) -> Transact:
+        assert(isinstance(id, int))
+
+        return Transact(self, self.web3, self.abi, self.address, self._contract, 'deal', [id])
+
     def __repr__(self):
         return f"Flopper('{self.address}')"

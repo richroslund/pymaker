@@ -20,6 +20,7 @@ from web3 import Web3, EthereumTesterProvider
 from pymaker import Address, Wad
 from pymaker.approval import directly
 from pymaker.auctions import Flipper, Flapper, Flopper
+from pymaker.auth import DSGuard
 from pymaker.token import DSToken
 from tests.helpers import time_travel_by
 
@@ -101,8 +102,46 @@ class TestFlopper:
         self.gem = DSToken.deploy(self.web3, 'MKR')
         self.flopper = Flopper.deploy(self.web3, self.pie.address, self.gem.address)
 
+        # so the Flopper can mint MKR
+        dad = DSGuard.deploy(self.web3)
+        dad.permit(self.flopper.address, self.gem.address, DSGuard.ANY).transact()
+        self.gem.set_authority(dad.address).transact()
+
     def test_pie(self):
         assert self.flopper.pie() == self.pie.address
 
     def test_gem(self):
         assert self.flopper.gem() == self.gem.address
+
+    def test_scenario(self):
+        # given
+        recipient = Address(self.web3.eth.accounts[1])
+        # and
+        self.pie.mint(Wad.from_number(50000000)).transact()
+
+        # when
+        self.pie.approve(self.flopper.address).transact()
+        self.flopper.kick(recipient, Wad.from_number(10), Wad.from_number(20000)).transact()
+        # then
+        assert self.pie.balance_of(recipient) == Wad(0)
+        assert self.gem.total_supply() == Wad(0)
+
+        # when
+        self.flopper.dent(1, Wad.from_number(9), Wad.from_number(20000)).transact()
+        # then
+        assert self.pie.balance_of(recipient) == Wad.from_number(20000)
+        assert self.gem.total_supply() == Wad(0)
+
+        # when
+        self.flopper.dent(1, Wad.from_number(8), Wad.from_number(20000)).transact()
+        # then
+        assert self.pie.balance_of(recipient) == Wad.from_number(20000)
+        assert self.gem.total_supply() == Wad(0)
+
+        time_travel_by(self.web3, 60*60*24*8)
+
+        # when
+        self.flopper.deal(1).transact()
+        # then
+        assert self.pie.balance_of(recipient) == Wad.from_number(20000)
+        assert self.gem.total_supply() == Wad.from_number(8)
