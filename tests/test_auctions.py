@@ -40,6 +40,20 @@ class TestFlipper:
     def test_gem(self):
         assert self.flipper.gem() == self.gem.address
 
+    def test_scenario(self):
+        # given
+        aaa = Address(self.web3.eth.accounts[1])
+        bbb = Address(self.web3.eth.accounts[2])
+        # and
+        self.gem.mint(Wad.from_number(100)).transact()
+        assert self.gem.balance_of(self.our_address) == Wad.from_number(100)
+
+        # when
+        self.gem.approve(self.flipper.address).transact()
+        self.flipper.kick(aaa, bbb, 1, Wad.from_number(100), Wad.from_number(5000)).transact()
+        # then
+        assert self.gem.balance_of(self.our_address) == Wad.from_number(0)
+
 
 class TestFlapper:
     def setup_method(self):
