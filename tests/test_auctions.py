@@ -120,11 +120,12 @@ class TestFlopper:
         self.pie.mint(Wad.from_number(50000000)).transact()
 
         # when
-        self.pie.approve(self.flopper.address).transact()
         self.flopper.kick(recipient, Wad.from_number(10), Wad.from_number(20000)).transact()
         # then
         assert self.pie.balance_of(recipient) == Wad(0)
         assert self.gem.total_supply() == Wad(0)
+
+        self.flopper.approve(directly())
 
         # when
         self.flopper.dent(1, Wad.from_number(9), Wad.from_number(20000)).transact()

@@ -188,6 +188,19 @@ class Flopper(Contract):
         self.address = address
         self._contract = self._get_contract(web3, self.abi, address)
 
+    def approve(self, approval_function):
+        """Approve the `Flapper` to access our `gem` so we can participate in auctions.
+
+        For available approval functions (i.e. approval modes) see `directly` and `via_tx_manager`
+        in `pymaker.approval`.
+
+        Args:
+            approval_function: Approval function (i.e. approval mode).
+        """
+        assert(callable(approval_function))
+
+        approval_function(ERC20Token(web3=self.web3, address=self.pie()), self.address, 'Flopper')
+
     def pie(self) -> Address:
         """Returns the `pie` token.
 
