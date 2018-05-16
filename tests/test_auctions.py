@@ -127,6 +127,27 @@ class TestFlopper:
     def test_gem(self):
         assert self.flopper.gem() == self.gem.address
 
+    def test_read(self):
+        # given
+        recipient = Address(self.web3.eth.accounts[1])
+        # and
+        self.pie.mint(Wad.from_number(50000000)).transact()
+
+        # expect
+        assert self.flopper.kicks() == 0
+
+        # when
+        self.flopper.kick(recipient, Wad.from_number(10), Wad.from_number(20000)).transact()
+        # then
+        assert self.flopper.kicks() == 1
+        # and
+        auction = self.flopper.bids(1)
+        assert auction.bid == Wad.from_number(20000)
+        assert auction.lot == Wad.from_number(10)
+        assert auction.guy == recipient
+        assert auction.tic == 0
+        assert auction.end > 0
+
     def test_scenario(self):
         # given
         recipient = Address(self.web3.eth.accounts[1])

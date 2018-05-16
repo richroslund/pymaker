@@ -205,6 +205,20 @@ class Flopper(Contract):
     abi = Contract._load_abi(__name__, 'abi/Flopper.abi')
     bin = Contract._load_bin(__name__, 'abi/Flopper.bin')
 
+    class Bid:
+        def __init__(self, bid: Wad, lot: Wad, guy: Address, tic: int, end: int):
+            assert(isinstance(bid, Wad))
+            assert(isinstance(lot, Wad))
+            assert(isinstance(guy, Address))
+            assert(isinstance(tic, int))
+            assert(isinstance(end, int))
+
+            self.bid = bid
+            self.lot = lot
+            self.guy = guy
+            self.tic = tic
+            self.end = end
+
     @staticmethod
     def deploy(web3: Web3, pie: Address, gem: Address):
         assert(isinstance(pie, Address))
@@ -248,6 +262,33 @@ class Flopper(Contract):
             The address of the `gem` token.
         """
         return Address(self._contract.call().gem())
+
+    def kicks(self) -> int:
+        """Returns the number of auctions started so far.
+
+        Returns:
+            The number of auctions started so far.
+        """
+        return int(self._contract.call().kicks())
+
+    def bids(self, id: int) -> Bid:
+        """Returns the auction details.
+
+        Args:
+            id: Auction identifier.
+
+        Returns:
+            The auction details.
+        """
+        assert(isinstance(id, int))
+
+        array = self._contract.call().bids(id)
+
+        return Flopper.Bid(bid=Wad(array[0]),
+                           lot=Wad(array[1]),
+                           guy=Address(array[2]),
+                           tic=int(array[3]),
+                           end=int(array[4]))
 
     def kick(self, gal: Address, lot: Wad, bid: Wad) -> Transact:
         assert(isinstance(gal, Address))
