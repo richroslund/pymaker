@@ -127,6 +127,15 @@ class TestFlopper:
     def test_gem(self):
         assert self.flopper.gem() == self.gem.address
 
+    def test_beg(self):
+        assert self.flopper.beg() == Wad.from_number(1.05)
+
+    def test_ttl(self):
+        assert self.flopper.ttl() == 3*60*60
+
+    def test_tau(self):
+        assert self.flopper.tau() == 7*24*60*60
+
     def test_read(self):
         # given
         recipient = Address(self.web3.eth.accounts[1])
