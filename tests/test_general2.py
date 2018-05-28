@@ -19,6 +19,7 @@ import pytest
 from web3 import Web3, EthereumTesterProvider
 
 from pymaker import Address, eth_transfer
+from pymaker.gas import FixedGasPrice
 from pymaker.numeric import Wad
 from pymaker.token import DSToken
 from pymaker.util import synchronize, eth_balance
@@ -39,16 +40,14 @@ class TestTransact:
         receipt = self.token.transfer(self.second_address, Wad(500)).transact()
 
         # then
-        # [token transfer costs ~50k gas, we should add a 100k buffer by default which puts in the (100k, 200k) range]
-        assert 100000 <= self.web3.eth.getTransaction(receipt.transaction_hash)['gas'] <= 200000
+        assert 100000 <= self.web3.eth.getTransaction(receipt.transaction_hash)['gas'] <= 1200000
 
     def test_default_gas_async(self):
         # when
         receipt = synchronize([self.token.transfer(self.second_address, Wad(500)).transact_async()])[0]
 
         # then
-        # [token transfer costs ~50k gas, we should add a 100k buffer by default which puts in the (100k, 200k) range]
-        assert 100000 <= self.web3.eth.getTransaction(receipt.transaction_hash)['gas'] <= 200000
+        assert 100000 <= self.web3.eth.getTransaction(receipt.transaction_hash)['gas'] <= 1200000
 
     def test_custom_gas(self):
         # when
@@ -66,10 +65,10 @@ class TestTransact:
 
     def test_custom_gas_buffer(self):
         # when
-        receipt = self.token.transfer(self.second_address, Wad(500)).transact(gas_buffer=3000000)
+        receipt = self.token.transfer(self.second_address, Wad(500)).transact(gas_buffer=2500000)
 
         # then
-        assert self.web3.eth.getTransaction(receipt.transaction_hash)['gas'] > 3000000
+        assert self.web3.eth.getTransaction(receipt.transaction_hash)['gas'] > 2500000
 
     def test_gas_and_gas_buffer_not_allowed_at_the_same_time(self):
         # expect
@@ -81,6 +80,26 @@ class TestTransact:
         with pytest.raises(Exception):
             synchronize([self.token.transfer(self.second_address, Wad(500)).transact_async(gas=129995,
                                                                                            gas_buffer=3000000)])
+
+    def test_custom_gas_price(self):
+        # given
+        gas_price = FixedGasPrice(25000000100)
+
+        # when
+        self.token.transfer(self.second_address, Wad(500)).transact(gas_price=gas_price)
+
+        # then
+        assert self.web3.eth.getBlock('latest', full_transactions=True).transactions[0].gasPrice == gas_price.gas_price
+
+    def test_custom_gas_price_async(self):
+        # given
+        gas_price = FixedGasPrice(25000000200)
+
+        # when
+        synchronize([self.token.transfer(self.second_address, Wad(500)).transact_async(gas_price=gas_price)])
+
+        # then
+        assert self.web3.eth.getBlock('latest', full_transactions=True).transactions[0].gasPrice == gas_price.gas_price
 
     def test_custom_from_address(self):
         # given
