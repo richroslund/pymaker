@@ -52,6 +52,14 @@ class Flipper(Contract):
         self.address = address
         self._contract = self._get_contract(web3, self.abi, address)
 
+    def era(self) -> int:
+        """Returns the current timestamp.
+
+        Returns:
+            The current timestamp.
+        """
+        return self._contract.call().era()
+
     def pie(self) -> Address:
         """Returns the `pie` token.
 
@@ -147,6 +155,14 @@ class Flapper(Contract):
         assert(callable(approval_function))
 
         approval_function(ERC20Token(web3=self.web3, address=self.gem()), self.address, 'Flapper')
+
+    def era(self) -> int:
+        """Returns the current timestamp.
+
+        Returns:
+            The current timestamp.
+        """
+        return self._contract.call().era()
 
     def pie(self) -> Address:
         """Returns the `pie` token.
@@ -244,6 +260,14 @@ class Flopper(Contract):
         assert(callable(approval_function))
 
         approval_function(ERC20Token(web3=self.web3, address=self.pie()), self.address, 'Flopper')
+
+    def era(self) -> int:
+        """Returns the current timestamp.
+
+        Returns:
+            The current timestamp.
+        """
+        return self._contract.call().era()
 
     def pie(self) -> Address:
         """Returns the `pie` token.

@@ -35,6 +35,9 @@ class TestFlipper:
         self.gem = DSToken.deploy(self.web3, 'REP')
         self.flipper = Flipper.deploy(self.web3, self.our_address, 111)
 
+    def test_era(self):
+        assert self.flipper.era() > 1000000
+
     @pytest.mark.skip(reason="Flipper doesn't work yet in the test setup")
     def test_pie(self):
         assert self.flipper.pie() == self.pie.address
@@ -67,6 +70,9 @@ class TestFlapper:
         self.pie = DSToken.deploy(self.web3, 'DAI')
         self.gem = DSToken.deploy(self.web3, 'MKR')
         self.flapper = Flapper.deploy(self.web3, self.pie.address, self.gem.address)
+
+    def test_era(self):
+        assert self.flapper.era() > 1000000
 
     def test_pie(self):
         assert self.flapper.pie() == self.pie.address
@@ -124,6 +130,9 @@ class TestFlopper:
         dad = DSGuard.deploy(self.web3)
         dad.permit(self.flopper.address, self.gem.address, DSGuard.ANY).transact()
         self.gem.set_authority(dad.address).transact()
+
+    def test_era(self):
+        assert self.flopper.era() > 1000000
 
     def test_pie(self):
         assert self.flopper.pie() == self.pie.address
