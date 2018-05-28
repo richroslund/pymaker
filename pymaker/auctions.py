@@ -37,16 +37,12 @@ class Flipper(Contract):
     bin = Contract._load_bin(__name__, 'abi/Flipper.bin')
 
     @staticmethod
-    def deploy(web3: Web3, bin: Address, ilk: int, pie: Address, gem: Address):
-        assert(isinstance(bin, Address))
+    def deploy(web3: Web3, vat: Address, ilk: int):
+        assert(isinstance(vat, Address))
         assert(isinstance(ilk, int))
-        assert(isinstance(pie, Address))
-        assert(isinstance(gem, Address))
 
-        return Flipper(web3=web3, address=Contract._deploy(web3, Flipper.abi, Flipper.bin, [bin.address,
-                                                                                            int_to_bytes32(ilk),
-                                                                                            pie.address,
-                                                                                            gem.address]))
+        return Flipper(web3=web3, address=Contract._deploy(web3, Flipper.abi, Flipper.bin, [vat.address,
+                                                                                            int_to_bytes32(ilk)]))
 
     def __init__(self, web3: Web3, address: Address):
         assert(isinstance(web3, Web3))
@@ -62,6 +58,7 @@ class Flipper(Contract):
         Returns:
             The address of the `pie` token.
         """
+        #TODO this function does not exist anymore. consider implementing by querying `Vat`
         return Address(self._contract.call().pie())
 
     def gem(self) -> Address:
@@ -70,6 +67,7 @@ class Flipper(Contract):
         Returns:
             The address of the `gem` token.
         """
+        #TODO this function does not exist anymore. consider implementing by querying `Vat`
         return Address(self._contract.call().gem())
 
     def kick(self, lad: Address, gal: Address, tab: int, lot: Wad, bid: Wad) -> Transact:
