@@ -80,6 +80,38 @@ class TestFlapper:
     def test_gem(self):
         assert self.flapper.gem() == self.gem.address
 
+    def test_beg(self):
+        assert self.flapper.beg() == Wad.from_number(1.05)
+
+    def test_ttl(self):
+        assert self.flapper.ttl() == 3*60*60
+
+    def test_tau(self):
+        assert self.flapper.tau() == 7*24*60*60
+
+    def test_read(self):
+        # given
+        pit = Address(self.web3.eth.accounts[1])
+        # and
+        self.pie.mint(Wad.from_number(50000000)).transact()
+        self.gem.mint(Wad.from_number(1000)).transact()
+
+        # expect
+        assert self.flapper.kicks() == 0
+
+        # when
+        self.pie.approve(self.flapper.address).transact()
+        self.flapper.kick(pit, Wad.from_number(20000), Wad.from_number(1)).transact()
+        # then
+        assert self.flapper.kicks() == 1
+        # and
+        auction = self.flapper.bids(1)
+        assert auction.bid == Wad.from_number(1)
+        assert auction.lot == Wad.from_number(20000)
+        assert auction.guy == self.our_address
+        assert auction.tic == 0
+        assert auction.end > 0
+
     def test_scenario(self):
         # given
         pit = Address(self.web3.eth.accounts[1])

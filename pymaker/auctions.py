@@ -128,6 +128,20 @@ class Flapper(Contract):
     abi = Contract._load_abi(__name__, 'abi/Flapper.abi')
     bin = Contract._load_bin(__name__, 'abi/Flapper.bin')
 
+    class Bid:
+        def __init__(self, bid: Wad, lot: Wad, guy: Address, tic: int, end: int):
+            assert(isinstance(bid, Wad))
+            assert(isinstance(lot, Wad))
+            assert(isinstance(guy, Address))
+            assert(isinstance(tic, int))
+            assert(isinstance(end, int))
+
+            self.bid = bid
+            self.lot = lot
+            self.guy = guy
+            self.tic = tic
+            self.end = end
+
     @staticmethod
     def deploy(web3: Web3, pie: Address, gem: Address):
         assert(isinstance(pie, Address))
@@ -179,6 +193,57 @@ class Flapper(Contract):
             The address of the `gem` token.
         """
         return Address(self._contract.call().gem())
+
+    def beg(self) -> Wad:
+        """Returns the percentage minimum bid increase.
+
+        Returns:
+            The percentage minimum bid increase.
+        """
+        return Wad(self._contract.call().beg())
+
+    def ttl(self) -> int:
+        """Returns the bid lifetime.
+
+        Returns:
+            The bid lifetime (in seconds).
+        """
+        return int(self._contract.call().ttl())
+
+    def tau(self) -> int:
+        """Returns the total auction length.
+
+        Returns:
+            The total auction length (in seconds).
+        """
+        return int(self._contract.call().tau())
+
+    def kicks(self) -> int:
+        """Returns the number of auctions started so far.
+
+        Returns:
+            The number of auctions started so far.
+        """
+        return int(self._contract.call().kicks())
+
+    def bids(self, id: int) -> Bid:
+        """Returns the auction details.
+
+        Args:
+            id: Auction identifier.
+
+        Returns:
+            The auction details.
+        """
+        assert(isinstance(id, int))
+
+        array = self._contract.call().bids(id)
+
+        return Flapper.Bid(bid=Wad(array[0]),
+                           lot=Wad(array[1]),
+                           guy=Address(array[2]),
+                           tic=int(array[3]),
+                           end=int(array[4]))
 
     def kick(self, gal: Address, lot: Wad, bid: Wad) -> Transact:
         assert(isinstance(gal, Address))
