@@ -125,6 +125,8 @@ class TestFlapper:
         # then
         assert self.pie.balance_of(self.our_address) == Wad.from_number(49980000)
         assert self.gem.balance_of(pit) == Wad.from_number(0)
+        # and
+        assert self.flapper.bids(1).tic == 0
 
         self.flapper.approve(directly())
 
@@ -133,12 +135,16 @@ class TestFlapper:
         # then
         assert self.pie.balance_of(self.our_address) == Wad.from_number(49980000)
         assert self.gem.balance_of(pit) == Wad.from_number(0.5)
+        # and
+        assert self.flapper.bids(1).tic > 0
 
         # when
         self.flapper.tend(1, Wad.from_number(20000), Wad.from_number(2.0)).transact()
         # then
         assert self.pie.balance_of(self.our_address) == Wad.from_number(49980000)
         assert self.gem.balance_of(pit) == Wad.from_number(1.0)
+        # and
+        assert self.flapper.bids(1).tic > 0
 
         time_travel_by(self.web3, 60*60*24*8)
 
@@ -213,6 +219,8 @@ class TestFlopper:
         # then
         assert self.pie.balance_of(recipient) == Wad(0)
         assert self.gem.total_supply() == Wad(0)
+        # and
+        assert self.flopper.bids(1).tic == 0
 
         self.flopper.approve(directly())
 
@@ -221,12 +229,16 @@ class TestFlopper:
         # then
         assert self.pie.balance_of(recipient) == Wad.from_number(20000)
         assert self.gem.total_supply() == Wad(0)
+        # and
+        assert self.flopper.bids(1).tic > 0
 
         # when
         self.flopper.dent(1, Wad.from_number(8), Wad.from_number(20000)).transact()
         # then
         assert self.pie.balance_of(recipient) == Wad.from_number(20000)
         assert self.gem.total_supply() == Wad(0)
+        # and
+        assert self.flopper.bids(1).tic > 0
 
         time_travel_by(self.web3, 60*60*24*8)
 
