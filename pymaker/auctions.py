@@ -78,6 +78,30 @@ class Flipper(Contract):
         #TODO this function does not exist anymore. consider implementing by querying `Vat`
         return Address(self._contract.call().gem())
 
+    def beg(self) -> Wad:
+        """Returns the percentage minimum bid increase.
+
+        Returns:
+            The percentage minimum bid increase.
+        """
+        return Wad(self._contract.call().beg())
+
+    def ttl(self) -> int:
+        """Returns the bid lifetime.
+
+        Returns:
+            The bid lifetime (in seconds).
+        """
+        return int(self._contract.call().ttl())
+
+    def tau(self) -> int:
+        """Returns the total auction length.
+
+        Returns:
+            The total auction length (in seconds).
+        """
+        return int(self._contract.call().tau())
+
     def kick(self, lad: Address, gal: Address, tab: int, lot: Wad, bid: Wad) -> Transact:
         assert(isinstance(lad, Address))
         assert(isinstance(gal, Address))

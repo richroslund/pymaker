@@ -18,7 +18,7 @@
 import pytest
 from web3 import Web3, EthereumTesterProvider
 
-from pymaker import Address, Wad
+from pymaker import Address, Wad, Contract
 from pymaker.approval import directly
 from pymaker.auctions import Flipper, Flapper, Flopper
 from pymaker.auth import DSGuard
@@ -31,20 +31,44 @@ class TestFlipper:
         self.web3 = Web3(EthereumTesterProvider())
         self.web3.eth.defaultAccount = self.web3.eth.accounts[0]
         self.our_address = Address(self.web3.eth.defaultAccount)
-        self.pie = DSToken.deploy(self.web3, 'DAI')
-        self.gem = DSToken.deploy(self.web3, 'REP')
-        self.flipper = Flipper.deploy(self.web3, self.our_address, 111)
+
+        # we need VatMock to mock Vat, as Flipper won't work without it
+        self.vat_address = Contract._deploy(self.web3, Contract._load_abi(__name__, 'abi/VatMock.abi'), Contract._load_bin(__name__, 'abi/VatMock.bin'), [])
+        self.vat_contract = self.web3.eth.contract(abi=Contract._load_abi(__name__, 'abi/VatMock.abi'))(address=self.vat_address.address)
+
+        self.flipper = Flipper.deploy(self.web3, self.vat_address, 123)
+
+    def dai_balance(self, address: Address):
+        assert(isinstance(address, Address))
+        return Wad(self.vat_contract.transact().dai(address.address))
+
+    def dai_mint(self, amount: Wad):
+        assert(isinstance(amount, Wad))
+        return Wad(self.vat_contract.transact().mint(amount.value))
+
+    def gem_balance(self, address: Address):
+        assert(isinstance(address, Address))
+        return Wad(self.vat_contract.transact().gem(address.address))
 
     def test_era(self):
         assert self.flipper.era() > 1000000
 
     @pytest.mark.skip(reason="Flipper doesn't work yet in the test setup")
     def test_pie(self):
-        assert self.flipper.pie() == self.pie.address
+        assert self.flipper.pie() == self.dai.address
 
     @pytest.mark.skip(reason="Flipper doesn't work yet in the test setup")
     def test_gem(self):
         assert self.flipper.gem() == self.gem.address
+
+    def test_beg(self):
+        assert self.flipper.beg() == Wad.from_number(1.05)
+
+    def test_ttl(self):
+        assert self.flipper.ttl() == 3*60*60
+
+    def test_tau(self):
+        assert self.flipper.tau() == 7*24*60*60
 
     @pytest.mark.skip(reason="Flipper doesn't work yet in the test setup")
     def test_scenario(self):
@@ -52,11 +76,10 @@ class TestFlipper:
         aaa = Address(self.web3.eth.accounts[1])
         bbb = Address(self.web3.eth.accounts[2])
         # and
-        self.gem.mint(Wad.from_number(100)).transact()
+        self.dai_mint(Wad.from_number(100)).transact()
         assert self.gem.balance_of(self.our_address) == Wad.from_number(100)
 
         # when
-        self.gem.approve(self.flipper.address).transact()
         self.flipper.kick(aaa, bbb, 1, Wad.from_number(100), Wad.from_number(5000)).transact()
         # then
         assert self.gem.balance_of(self.our_address) == Wad.from_number(0)
