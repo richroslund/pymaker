@@ -36,6 +36,26 @@ class Flipper(Contract):
     abi = Contract._load_abi(__name__, 'abi/Flipper.abi')
     bin = Contract._load_bin(__name__, 'abi/Flipper.bin')
 
+    class Bid:
+        def __init__(self, bid: Wad, lot: Wad, guy: Address, tic: int, end: int, lad: Address, gal: Address, tab: Wad):
+            assert(isinstance(bid, Wad))
+            assert(isinstance(lot, Wad))
+            assert(isinstance(guy, Address))
+            assert(isinstance(tic, int))
+            assert(isinstance(end, int))
+            assert(isinstance(lad, Address))
+            assert(isinstance(gal, Address))
+            assert(isinstance(tab, Wad))
+
+            self.bid = bid
+            self.lot = lot
+            self.guy = guy
+            self.tic = tic
+            self.end = end
+            self.lad = lad
+            self.gal = gal
+            self.tab = tab
+
     @staticmethod
     def deploy(web3: Web3, vat: Address, ilk: int):
         assert(isinstance(vat, Address))
@@ -84,16 +104,46 @@ class Flipper(Contract):
         """
         return int(self._contract.call().tau())
 
-    def kick(self, lad: Address, gal: Address, tab: int, lot: Wad, bid: Wad) -> Transact:
+    def kicks(self) -> int:
+        """Returns the number of auctions started so far.
+
+        Returns:
+            The number of auctions started so far.
+        """
+        return int(self._contract.call().kicks())
+
+    def bids(self, id: int) -> Bid:
+        """Returns the auction details.
+
+        Args:
+            id: Auction identifier.
+
+        Returns:
+            The auction details.
+        """
+        assert(isinstance(id, int))
+
+        array = self._contract.call().bids(id)
+
+        return Flipper.Bid(bid=Wad(array[0]),
+                           lot=Wad(array[1]),
+                           guy=Address(array[2]),
+                           tic=int(array[3]),
+                           end=int(array[4]),
+                           lad=Address(array[5]),
+                           gal=Address(array[6]),
+                           tab=Wad(array[7]))
+
+    def kick(self, lad: Address, gal: Address, tab: Wad, lot: Wad, bid: Wad) -> Transact:
         assert(isinstance(lad, Address))
         assert(isinstance(gal, Address))
-        assert(isinstance(tab, int))
+        assert(isinstance(tab, Wad))
         assert(isinstance(lot, Wad))
         assert(isinstance(bid, Wad))
 
         return Transact(self, self.web3, self.abi, self.address, self._contract, 'kick', [lad.address,
                                                                                           gal.address,
-                                                                                          tab,
+                                                                                          tab.value,
                                                                                           lot.value,
                                                                                           bid.value])
 

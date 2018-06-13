@@ -31,6 +31,8 @@ class TestFlipper:
         self.web3 = Web3(EthereumTesterProvider())
         self.web3.eth.defaultAccount = self.web3.eth.accounts[0]
         self.our_address = Address(self.web3.eth.defaultAccount)
+        self.other_address_1 = Address(self.web3.eth.accounts[1])
+        self.other_address_2 = Address(self.web3.eth.accounts[2])
 
         # we need VatMock to mock Vat, as Flipper won't work without it
         self.vat_address = Contract._deploy(self.web3, Contract._load_abi(__name__, 'abi/VatMock.abi'), Contract._load_bin(__name__, 'abi/VatMock.bin'), [])
@@ -38,17 +40,18 @@ class TestFlipper:
 
         self.flipper = Flipper.deploy(self.web3, self.vat_address, 123)
 
-    def dai_balance(self, address: Address):
+    def dai_balance(self, address: Address) -> Wad:
         assert(isinstance(address, Address))
-        return Wad(self.vat_contract.transact().dai(address.address))
+        return Wad(self.vat_contract.call().dai(address.address))
 
-    def dai_mint(self, amount: Wad):
+    def dai_mint(self, address: Address, amount: Wad):
+        assert(isinstance(address, Address))
         assert(isinstance(amount, Wad))
-        return Wad(self.vat_contract.transact().mint(amount.value))
+        self.vat_contract.transact().mint(address.address, amount.value)
 
-    def gem_balance(self, address: Address):
+    def gem_balance(self, address: Address) -> Wad:
         assert(isinstance(address, Address))
-        return Wad(self.vat_contract.transact().gem(address.address))
+        return Wad(self.vat_contract.call().gem(address.address))
 
     def test_era(self):
         assert self.flipper.era() > 1000000
@@ -62,19 +65,43 @@ class TestFlipper:
     def test_tau(self):
         assert self.flipper.tau() == 7*24*60*60
 
-    @pytest.mark.skip(reason="Flipper doesn't work yet in the test setup")
+    def test_read(self):
+        # when
+        self.flipper.kick(lad=self.other_address_1,
+                          gal=self.other_address_2,
+                          tab=Wad.from_number(5000),
+                          lot=Wad.from_number(100),
+                          bid=Wad.from_number(1000)).transact()
+
+        # then
+        assert self.flipper.kicks() == 1
+        # and
+        auction = self.flipper.bids(1)
+        assert auction.lad == self.other_address_1
+        assert auction.gal == self.other_address_2
+        assert auction.bid == Wad.from_number(1000)
+        assert auction.lot == Wad.from_number(100)
+        assert auction.tab == Wad.from_number(5000)
+        assert auction.guy == self.our_address
+        assert auction.tic == 0
+        assert auction.end > 0
+
     def test_scenario(self):
         # given
-        aaa = Address(self.web3.eth.accounts[1])
-        bbb = Address(self.web3.eth.accounts[2])
-        # and
-        self.dai_mint(Wad.from_number(100)).transact()
-        assert self.gem.balance_of(self.our_address) == Wad.from_number(100)
+        self.dai_mint(self.our_address, Wad.from_number(100000))
+        assert self.dai_balance(self.our_address) == Wad.from_number(100000)
 
         # when
-        self.flipper.kick(aaa, bbb, 1, Wad.from_number(100), Wad.from_number(5000)).transact()
+        self.flipper.kick(lad=self.other_address_1,
+                          gal=self.other_address_1,
+                          tab=Wad.from_number(5000),
+                          lot=Wad.from_number(100),
+                          bid=Wad.from_number(1000)).transact()
         # then
-        assert self.gem.balance_of(self.our_address) == Wad.from_number(0)
+        assert self.gem_balance(self.other_address_1) == Wad.from_number(0)
+        assert self.dai_balance(self.our_address) == Wad.from_number(100000)
+
+        # TODO tbc...
 
 
 class TestFlapper:
