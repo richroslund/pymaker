@@ -53,14 +53,6 @@ class TestFlipper:
     def test_era(self):
         assert self.flipper.era() > 1000000
 
-    @pytest.mark.skip(reason="Flipper doesn't work yet in the test setup")
-    def test_pie(self):
-        assert self.flipper.pie() == self.dai.address
-
-    @pytest.mark.skip(reason="Flipper doesn't work yet in the test setup")
-    def test_gem(self):
-        assert self.flipper.gem() == self.gem.address
-
     def test_beg(self):
         assert self.flipper.beg() == Wad.from_number(1.05)
 

@@ -60,24 +60,6 @@ class Flipper(Contract):
         """
         return self._contract.call().era()
 
-    def pie(self) -> Address:
-        """Returns the `pie` token.
-
-        Returns:
-            The address of the `pie` token.
-        """
-        #TODO this function does not exist anymore. consider implementing by querying `Vat`
-        return Address(self._contract.call().pie())
-
-    def gem(self) -> Address:
-        """Returns the `gem` token.
-
-        Returns:
-            The address of the `gem` token.
-        """
-        #TODO this function does not exist anymore. consider implementing by querying `Vat`
-        return Address(self._contract.call().gem())
-
     def beg(self) -> Wad:
         """Returns the percentage minimum bid increase.
 
