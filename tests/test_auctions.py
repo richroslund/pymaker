@@ -15,7 +15,6 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import pytest
 from web3 import Web3, EthereumTesterProvider
 
 from pymaker import Address, Wad, Contract
@@ -96,12 +95,42 @@ class TestFlipper:
                           gal=self.other_address_1,
                           tab=Wad.from_number(5000),
                           lot=Wad.from_number(100),
-                          bid=Wad.from_number(1000)).transact()
+                          bid=Wad.from_number(1000)).transact(from_address=self.other_address_1)
         # then
-        assert self.gem_balance(self.other_address_1) == Wad.from_number(0)
         assert self.dai_balance(self.our_address) == Wad.from_number(100000)
+        assert self.dai_balance(self.other_address_1) == Wad.from_number(0)
+        assert self.gem_balance(self.our_address) == Wad.from_number(0)
+        assert self.gem_balance(self.other_address_1) == Wad.from_number(0)
 
-        # TODO tbc...
+        # when
+        self.flipper.tend(1, Wad.from_number(100), Wad.from_number(2000)).transact()
+        assert self.dai_balance(self.our_address) == Wad.from_number(100000) - Wad.from_number(2000)
+        assert self.dai_balance(self.other_address_1) == Wad.from_number(2000)
+        assert self.gem_balance(self.our_address) == Wad.from_number(0)
+        assert self.gem_balance(self.other_address_1) == Wad.from_number(0)
+
+        # when
+        self.flipper.tend(1, Wad.from_number(100), Wad.from_number(5000)).transact()
+        assert self.dai_balance(self.our_address) == Wad.from_number(100000) - Wad.from_number(5000)
+        assert self.dai_balance(self.other_address_1) == Wad.from_number(5000)
+        assert self.gem_balance(self.our_address) == Wad.from_number(0)
+        assert self.gem_balance(self.other_address_1) == Wad.from_number(0)
+
+        # when
+        self.flipper.dent(1, Wad.from_number(80), Wad.from_number(5000)).transact()
+        assert self.dai_balance(self.our_address) == Wad.from_number(100000) - Wad.from_number(5000)
+        assert self.dai_balance(self.other_address_1) == Wad.from_number(5000)
+        assert self.gem_balance(self.our_address) == Wad.from_number(0)
+        assert self.gem_balance(self.other_address_1) == Wad.from_number(20)
+
+        time_travel_by(self.web3, 60*60*24*8)
+
+        # when
+        self.flipper.deal(1).transact()
+        assert self.dai_balance(self.our_address) == Wad.from_number(100000) - Wad.from_number(5000)
+        assert self.dai_balance(self.other_address_1) == Wad.from_number(5000)
+        assert self.gem_balance(self.our_address) == Wad.from_number(80)
+        assert self.gem_balance(self.other_address_1) == Wad.from_number(20)
 
 
 class TestFlapper:
