@@ -15,10 +15,12 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import asyncio
 import pytest
+from mock import MagicMock
 from web3 import Web3, EthereumTesterProvider
 
-from pymaker import Address, eth_transfer
+from pymaker import Address, eth_transfer, TransactStatus
 from pymaker.gas import FixedGasPrice
 from pymaker.numeric import Wad
 from pymaker.token import DSToken
@@ -34,6 +36,46 @@ class TestTransact:
         self.third_address = Address(self.web3.eth.accounts[2])
         self.token = DSToken.deploy(self.web3, 'ABC')
         self.token.mint(Wad(1000000)).transact()
+
+    def test_can_only_execute_once(self):
+        # given
+        transact = self.token.transfer(self.second_address, Wad(500))
+        # and
+        transact.transact()
+
+        # expect
+        with pytest.raises(Exception):
+            transact.transact()
+
+    def test_can_only_execute_once_even_if_tx_failed(self):
+        # given
+        transact = self.token.transfer(self.second_address, Wad(2000000))  # more than we minted
+        # and
+        transact.transact()
+
+        # expect
+        with pytest.raises(Exception):
+            transact.transact()
+
+    def test_should_update_status_when_finished(self):
+        # given
+        transact = self.token.transfer(self.second_address, Wad(500))
+        assert transact.status == TransactStatus.NEW
+
+        # when
+        transact.transact()
+        # then
+        assert transact.status == TransactStatus.FINISHED
+
+    def test_should_update_status_to_finished_even_if_tx_failed(self):
+        # given
+        transact = self.token.transfer(self.second_address, Wad(2000000))  # more than we minted
+        assert transact.status == TransactStatus.NEW
+
+        # when
+        transact.transact()
+        # then
+        assert transact.status == TransactStatus.FINISHED
 
     def test_default_gas(self):
         # when
@@ -132,3 +174,92 @@ class TestTransact:
         # then
         assert eth_balance(self.web3, self.second_address) < Wad.from_number(1000000)
         assert eth_balance(self.web3, self.third_address) == Wad.from_number(1000000) + Wad.from_number(1.5)
+
+
+class TestTransactReplace:
+    def setup_method(self):
+        self.web3 = Web3(EthereumTesterProvider())
+        self.web3.eth.defaultAccount = self.web3.eth.accounts[0]
+        self.our_address = Address(self.web3.eth.defaultAccount)
+        self.second_address = Address(self.web3.eth.accounts[1])
+        self.third_address = Address(self.web3.eth.accounts[2])
+        self.token = DSToken.deploy(self.web3, 'ABC')
+        self.token.mint(Wad(1000000)).transact()
+
+    @pytest.mark.asyncio
+    async def test_transaction_replace(self):
+        # given
+        original_send_transaction = self.web3.eth.sendTransaction
+        original_get_transaction = self.web3.eth.getTransaction
+        nonce = self.web3.eth.getTransactionCount(self.our_address.address)
+
+        # when
+        self.web3.eth.sendTransaction = MagicMock(return_value='0xaaaaaaaaaabbbbbbbbbbccccccccccdddddddddd')
+        self.web3.eth.getTransaction = MagicMock(return_value={'nonce': nonce})
+        # and
+        transact_1 = self.token.transfer(self.second_address, Wad(500))
+        future_receipt_1 = asyncio.ensure_future(transact_1.transact_async())
+        # and
+        await asyncio.sleep(2)
+        # then
+        assert future_receipt_1.done() is False
+        assert self.token.balance_of(self.second_address) == Wad(0)
+
+        # when
+        def second_send_transaction(transaction):
+            assert transaction['nonce'] == nonce
+
+            # TestRPC doesn't support `sendTransaction` calls with the `nonce` parameter
+            # (unlike proper Ethereum nodes which handle it very well)
+            transaction_without_nonce = {key: transaction[key] for key in transaction if key != 'nonce'}
+            return original_send_transaction(transaction_without_nonce)
+
+        self.web3.eth.sendTransaction = MagicMock(side_effect=second_send_transaction)
+        self.web3.eth.getTransaction = original_get_transaction
+        # and
+        transact_2 = self.token.transfer(self.third_address, Wad(700))
+        future_receipt_2 = asyncio.ensure_future(transact_2.transact_async(replace=transact_1))
+        # and
+        await asyncio.sleep(2)
+        # then
+        assert transact_1.status == TransactStatus.FINISHED
+        assert future_receipt_1.done()
+        assert future_receipt_1.result() is None
+        # and
+        assert transact_2.status == TransactStatus.FINISHED
+        assert future_receipt_2.done()
+        assert future_receipt_2.result() is not None
+        assert future_receipt_2.result().successful is True
+        # and
+        assert self.token.balance_of(self.second_address) == Wad(0)
+        assert self.token.balance_of(self.third_address) == Wad(700)
+
+    @pytest.mark.timeout(10)
+    def test_transaction_replace_of_failed_transaction(self):
+        # given
+        original_send_transaction = self.web3.eth.sendTransaction
+
+        # when
+        transact_1 = self.token.transfer(self.second_address, Wad(2000000))  # more than we minted
+        receipt_1 = transact_1.transact()
+        # then
+        assert transact_1.status == TransactStatus.FINISHED
+        assert receipt_1 is None
+
+        # when
+        def second_send_transaction(transaction):
+            # TestRPC doesn't support `sendTransaction` calls with the `nonce` parameter
+            # (unlike proper Ethereum nodes which handle it very well)
+            transaction_without_nonce = {key: transaction[key] for key in transaction if key != 'nonce'}
+            return original_send_transaction(transaction_without_nonce)
+
+        self.web3.eth.sendTransaction = MagicMock(side_effect=second_send_transaction)
+        # when
+        transact_2 = self.token.transfer(self.second_address, Wad(500))  # more than we minted
+        receipt_2 = transact_2.transact(replace=transact_1)
+        # then
+        assert transact_2.status == TransactStatus.FINISHED
+        assert receipt_2 is not None
+        assert receipt_2.successful
+        # and
+        assert self.token.balance_of(self.second_address) == Wad(500)

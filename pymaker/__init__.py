@@ -20,7 +20,8 @@ import json
 import logging
 import sys
 import time
-from functools import total_ordering
+from enum import Enum, auto
+from functools import total_ordering, wraps
 from typing import Optional
 
 import eth_utils
@@ -59,6 +60,24 @@ def stop_all_filter_threads():
             filter_thread.stop_watching(timeout=60)
         except:
             pass
+
+
+def _track_status(f):
+    @wraps(f)
+    def wrapper(*args, **kwds):
+        # Check for multiple execution
+        if args[0].status != TransactStatus.NEW:
+            raise Exception("Each `Transact` can only be executed once")
+
+        # Set current status to in progress
+        args[0].status = TransactStatus.IN_PROGRESS
+
+        try:
+            return f(*args, **kwds)
+        finally:
+            args[0].status = TransactStatus.FINISHED
+
+    return wrapper
 
 
 @total_ordering
@@ -255,6 +274,13 @@ class Receipt:
     def logs(self):
         return self.raw_receipt['logs']
 
+
+class TransactStatus(Enum):
+     NEW = auto()
+     IN_PROGRESS = auto()
+     FINISHED = auto()
+
+
 class Transact:
     """Represents an Ethereum transaction before it gets executed."""
 
@@ -289,6 +315,8 @@ class Transact:
         self.parameters = parameters
         self.extra = extra
         self.result_function = result_function
+        self.status = TransactStatus.NEW
+        self.nonce = None
 
     def _get_receipt(self, transaction_hash: str) -> Optional[Receipt]:
         raw_receipt = self.web3.eth.getTransactionReceipt(transaction_hash)
@@ -395,6 +423,7 @@ class Transact:
         """
         return synchronize([self.transact_async(**kwargs)])[0]
 
+    @_track_status
     async def transact_async(self, **kwargs) -> Optional[Receipt]:
         """Executes the Ethereum transaction asynchronously.
 
@@ -435,8 +464,16 @@ class Transact:
         gas_price = kwargs['gas_price'] if ('gas_price' in kwargs) else DefaultGasPrice()
         assert(isinstance(gas_price, GasPrice))
 
+        # Get the transaction this one is supposed to replace.
+        # If there is one, try to borrow the nonce from it as long as that transaction isn't finished.
+        replaced_tx = kwargs['replace'] if ('replace' in kwargs) else None
+        if replaced_tx is not None:
+            while replaced_tx.nonce is None and replaced_tx.status != TransactStatus.FINISHED:
+                await asyncio.sleep(0.25)
+
+            self.nonce = replaced_tx.nonce
+
         # Initialize variables which will be used in the main loop.
-        nonce = None
         tx_hashes = []
         initial_time = time.time()
         gas_price_last = 0
@@ -444,7 +481,7 @@ class Transact:
         while True:
             seconds_elapsed = int(time.time() - initial_time)
 
-            if nonce is not None and self.web3.eth.getTransactionCount(from_account) > nonce:
+            if self.nonce is not None and self.web3.eth.getTransactionCount(from_account) > self.nonce:
                 # Check if any transaction sent so far has been mined (has a receipt).
                 # If it has, we return either the receipt (if if was successful) or `None`.
                 for tx_hash in tx_hashes:
@@ -473,19 +510,20 @@ class Transact:
                 gas_price_last = gas_price_value
 
                 try:
-                    tx_hash = self._func(from_account, gas, gas_price_value, nonce)
+                    tx_hash = self._func(from_account, gas, gas_price_value, self.nonce)
                     tx_hashes.append(tx_hash)
 
                     # If this is the first transaction sent, get its nonce so we can override the transaction with
-                    # another one using higher gas price if :py:class:`pymaker.gas.GasPrice` tells us to do so
-                    if nonce is None:
-                        nonce = self.web3.eth.getTransaction(tx_hash)['nonce']
+                    # another one using higher gas price if :py:class:`pymaker.gas.GasPrice` tells us to do so,
+                    # or replace it with a completely another transaction
+                    if self.nonce is None:
+                        self.nonce = self.web3.eth.getTransaction(tx_hash)['nonce']
 
-                    self.logger.info(f"Sent transaction {self.name()} with nonce={nonce}, gas={gas},"
+                    self.logger.info(f"Sent transaction {self.name()} with nonce={self.nonce}, gas={gas},"
                                      f" gas_price={gas_price_value if gas_price_value is not None else 'default'}"
                                      f" (tx_hash={tx_hash})")
                 except:
-                    self.logger.warning(f"Failed to send transaction {self.name()} with nonce={nonce}, gas={gas},"
+                    self.logger.warning(f"Failed to send transaction {self.name()} with nonce={self.nonce}, gas={gas},"
                                         f" gas_price={gas_price_value if gas_price_value is not None else 'default'}")
 
                     if len(tx_hashes) == 0:
